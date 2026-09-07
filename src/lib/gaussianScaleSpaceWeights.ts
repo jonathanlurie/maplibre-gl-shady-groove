@@ -4,14 +4,14 @@
  * (hKernel)
  */
 export type GaussianScaleSpaceWeights = {
-  hKernel60: number,
-  hKernel30: number,
-  hKernel15: number,
-  hKernel7: number,
-  hKernel3: number,
-}
+  hKernel60: number;
+  hKernel30: number;
+  hKernel15: number;
+  hKernel7: number;
+  hKernel3: number;
+};
 
-export type GaussianScaleSpaceWeightsPerZoomLevel = Record<number, GaussianScaleSpaceWeights>
+export type GaussianScaleSpaceWeightsPerZoomLevel = Record<number, GaussianScaleSpaceWeights>;
 
 export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomLevel = {
   2: {
@@ -29,7 +29,7 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
     hKernel7: 0.05,
     hKernel3: 0.1,
   },
-  
+
   4: {
     hKernel60: 0.1,
     hKernel30: 0.1,
@@ -45,7 +45,7 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
     hKernel7: 0.1,
     hKernel3: 0.2,
   },
-  
+
   6: {
     hKernel60: 0.1,
     hKernel30: 0.2,
@@ -53,7 +53,7 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
     hKernel7: 0.2,
     hKernel3: 0.3,
   },
-  
+
   7: {
     hKernel60: 0.2,
     hKernel30: 0.15,
@@ -61,7 +61,7 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
     hKernel7: 0.5,
     hKernel3: 0.5,
   },
-  
+
   8: {
     hKernel60: 0.5,
     hKernel30: 0.1,
@@ -93,7 +93,7 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
     hKernel7: 4,
     hKernel3: 6,
   },
-  
+
   12: {
     hKernel60: 1.5,
     hKernel30: 3,

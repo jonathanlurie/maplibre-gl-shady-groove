@@ -4,4 +4,4 @@ export type TileIndex = {
   y: number;
 };
 
-export type RGBColor = [number, number, number]
+export type RGBColor = [number, number, number];

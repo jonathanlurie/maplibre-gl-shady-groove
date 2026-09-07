@@ -1,10 +1,14 @@
+import type { AddProtocolAction, Map as MLMap, RequestParameters } from "maplibre-gl";
+import { ProcessingNode, RasterContext, Texture, UNIFORM_TYPE } from "raster-gl";
+import {
+  defaultGaussianScaleSpaceWeights,
+  type GaussianScaleSpaceWeights,
+  type GaussianScaleSpaceWeightsPerZoomLevel,
+} from "./gaussianScaleSpaceWeights";
 import { TileCache } from "./TileCache";
+import TileWorker from "./tile-worker?worker&inline";
 import { buildGaussianKernelFromRadius, clamp, createPaddedTileOffscreenCanvas, getNeighborIndex } from "./tools";
 import type { RGBColor, TileIndex } from "./types";
-import TileWorker from "./tile-worker?worker&inline";
-import { defaultGaussianScaleSpaceWeights, type GaussianScaleSpaceWeights, type GaussianScaleSpaceWeightsPerZoomLevel } from "./gaussianScaleSpaceWeights";
-import { ProcessingNode, RasterContext, Texture, UNIFORM_TYPE } from "raster-gl";
-import type { AddProtocolAction, RequestParameters } from "maplibre-gl";
 
 export type TerrainEncoding = "terrarium" | "mapbox";
 
@@ -136,16 +140,19 @@ void main() {
 
 // Options for web worker when computation is on CPU
 export type TileProcesingWorkerMessage = {
-  tileIndex: TileIndex,
-  paddedTile: ImageBitmap,
-  padding: number,
-  terrainEncoding: TerrainEncoding,
-  gaussianScaleSpaceWeights: GaussianScaleSpaceWeights,
-  color: RGBColor,
-  tileSize: number,
-}
+  tileIndex: TileIndex;
+  paddedTile: ImageBitmap;
+  padding: number;
+  terrainEncoding: TerrainEncoding;
+  gaussianScaleSpaceWeights: GaussianScaleSpaceWeights;
+  color: RGBColor;
+  tileSize: number;
+};
 
-export type CustomTileImageBitmapMaker = (tileIndex: TileIndex, abortSignal?: AbortSignal) => Promise<ImageBitmap | null>
+export type CustomTileImageBitmapMaker = (
+  tileIndex: TileIndex,
+  abortSignal?: AbortSignal,
+) => Promise<ImageBitmap | null>;
 
 export type ShadyGrooveOptions = {
   /**
@@ -154,13 +161,13 @@ export type ShadyGrooveOptions = {
    * source tiles from a custom source, such as a PMTiles file.
    * If both are provided, the option `urlPattern` prevails overs `customTileImageBitmapMaker`.
    */
-  urlPattern?: string,
+  urlPattern?: string;
 
   /**
    * A custom function to source raster terrain tile as ImageBitmap.
    * If bother are provided, the option `urlPattern` prevails overs `customTileImageBitmapMaker`.
    */
-  customTileImageBitmapMaker?: CustomTileImageBitmapMaker,
+  customTileImageBitmapMaker?: CustomTileImageBitmapMaker;
 
   /**
    * Terrain encoding: "mapbox" or "terrarium"
@@ -171,31 +178,31 @@ export type ShadyGrooveOptions = {
    * Custom weights of each gaussian scale on each zoom levels.
    * Default: using the built-in
    */
-  gaussianScaleSpaceWeights?: GaussianScaleSpaceWeightsPerZoomLevel
+  gaussianScaleSpaceWeights?: GaussianScaleSpaceWeightsPerZoomLevel;
 
   /**
    * Color of the shade as RGB with values in [0, 255]
-   * Default: 
+   * Default:
    */
-  color?: RGBColor,
+  color?: RGBColor;
 
   /**
    * Opacity of the layer in [0, 1]
    */
-  alpha?: number,
+  alpha?: number;
 
   /**
    * Min zoom level.
    * Default: 0
    */
-  minzoom?: number
+  minzoom?: number;
 
   /**
    * Max zoom level.
    * Default: 12
    */
-  maxzoom?: number,
-}
+  maxzoom?: number;
+};
 
 /**
  * Gaussian Scale-space Terrain Shading
@@ -207,7 +214,7 @@ export class ShadyGroove {
   private readonly padding = 60;
   private readonly terrainEncoding: TerrainEncoding;
   private readonly gaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomLevel;
-  private readonly color: RGBColor
+  private readonly color: RGBColor;
   private rctx!: RasterContext;
   private lowPassHorizontalNode!: ProcessingNode;
   private lowPassVerticalNode!: ProcessingNode;
@@ -218,7 +225,7 @@ export class ShadyGroove {
   private readonly sourceId = `sg_source-${Math.random().toFixed(6).split(".").pop()}`;
   private readonly layerId = `sg_layer-${Math.random().toFixed(6).split(".").pop()}`;
   private readonly protocolName = `shadygroove-${Math.random().toFixed(6).split(".").pop()}`;
-  private map: maplibregl.Map | null = null;
+  private map: MLMap | null = null;
 
   constructor(options: ShadyGrooveOptions) {
     this.urlPattern = options.urlPattern ?? null;
@@ -232,7 +239,7 @@ export class ShadyGroove {
     this.gaussianScaleSpaceWeights = {
       ...defaultGaussianScaleSpaceWeights,
       ...(options.gaussianScaleSpaceWeights ?? {}),
-    }
+    };
     this.color = options.color ?? [0, 0, 0];
     this.alpha = options.alpha ? clamp(0, 1, options.alpha) : 0.75;
     this.minzoom = options.minzoom ? clamp(0, 22, options.minzoom) : 0;
@@ -251,15 +258,15 @@ export class ShadyGroove {
    * Tile are computed on WebGL by default (faster) but this can be disabled to
    * compute tiles on pure JS on a webworker
    */
-  getProtocolLoadFunction(options: {webgl: boolean} = {webgl: true}): AddProtocolAction {
+  getProtocolLoadFunction(options: { webgl: boolean } = { webgl: true }): AddProtocolAction {
     const f = async (requestParameters: RequestParameters, abortController: AbortController) => {
       const url = requestParameters.url;
       try {
         const urlObj = new URL(url);
-        const urlParams = urlObj.searchParams
-        const z = Number.parseInt(urlParams.get("z") as string);
-        const x = Number.parseInt(urlParams.get("x") as string);
-        const y = Number.parseInt(urlParams.get("y") as string);
+        const urlParams = urlObj.searchParams;
+        const z = Number.parseInt(urlParams.get("z") as string, 10);
+        const x = Number.parseInt(urlParams.get("x") as string, 10);
+        const y = Number.parseInt(urlParams.get("y") as string, 10);
 
         let tile: ImageBitmap | null;
 
@@ -268,7 +275,7 @@ export class ShadyGroove {
         } else {
           tile = await this.computeTile({ z, x, y }, { abortSignal: abortController?.signal });
         }
-  
+
         return { data: tile };
       } catch (err) {
         if (abortController?.signal?.aborted) {
@@ -276,7 +283,7 @@ export class ShadyGroove {
         }
         throw err;
       }
-    }
+    };
 
     return f;
   }
@@ -308,7 +315,9 @@ export class ShadyGroove {
       fragmentShaderSource: fragmentShaderBlurPass,
     });
 
-    this.combineNode = new ProcessingNode(this.rctx, { renderToTexture: false });
+    this.combineNode = new ProcessingNode(this.rctx, {
+      renderToTexture: false,
+    });
 
     this.combineNode.setShaderSource({
       fragmentShaderSource: fragmentShaderCombine,
@@ -320,10 +329,11 @@ export class ShadyGroove {
    * This function is somewhat internal but left public for debugging purpose
    * or to export  static asset.
    */
-  async computeTile(tileIndex: TileIndex,
+  async computeTile(
+    tileIndex: TileIndex,
     options: {
-      abortSignal?: AbortSignal,
-    } = {}
+      abortSignal?: AbortSignal;
+    } = {},
   ): Promise<ImageBitmap | null> {
     const tilePromises = await Promise.allSettled(this.makeTilePromises(tileIndex, options));
 
@@ -331,11 +341,11 @@ export class ShadyGroove {
       return null;
     }
 
-    if(options.abortSignal?.aborted) {
+    if (options.abortSignal?.aborted) {
       return null;
     }
-    
-    const imageBitmaps = tilePromises.map((res) => res.status === "fulfilled" ? res.value : null);
+
+    const imageBitmaps = tilePromises.map((res) => (res.status === "fulfilled" ? res.value : null));
     const paddedCanvas = createPaddedTileOffscreenCanvas(imageBitmaps, this.padding);
     const paddedTile = await createImageBitmap(paddedCanvas);
     const tileSize = imageBitmaps[0]?.width as number;
@@ -346,30 +356,34 @@ export class ShadyGroove {
       options.abortSignal?.addEventListener("abort", () => {
         console.log("ABORT tile: ", tileIndex);
         tileWorker.terminate();
-      },
-    );
+      });
 
-      tileWorker.postMessage({
-        tileIndex,
-        tileSize,
-        terrainEncoding: this.terrainEncoding,
-        paddedTile,
-        padding: this.padding,
-        gaussianScaleSpaceWeights: this.gaussianScaleSpaceWeights[tileIndex.z],
-        color: this.color,
-      }, [paddedTile]);
-      
+      tileWorker.postMessage(
+        {
+          tileIndex,
+          tileSize,
+          terrainEncoding: this.terrainEncoding,
+          paddedTile,
+          padding: this.padding,
+          gaussianScaleSpaceWeights: this.gaussianScaleSpaceWeights[tileIndex.z],
+          color: this.color,
+        },
+        [paddedTile],
+      );
+
       tileWorker.onmessage = (e: MessageEvent<ImageBitmap>) => {
         tileWorker.terminate();
-        resolve(e.data)
-      }
-    })
+        resolve(e.data);
+      };
+    });
   }
 
-  private makeTilePromises(tileIndex: TileIndex,
+  private makeTilePromises(
+    tileIndex: TileIndex,
     options: {
-      abortSignal?: AbortSignal,
-    } = {}): Promise<ImageBitmap | null>[] {
+      abortSignal?: AbortSignal;
+    } = {},
+  ): Promise<ImageBitmap | null>[] {
     if (this.urlPattern) {
       return [
         this.tileCache.getTile(tileIndex, this.urlPattern, options.abortSignal), // center
@@ -395,7 +409,7 @@ export class ShadyGroove {
         this.customTileImageBitmapMaker(getNeighborIndex(tileIndex, "SW"), options.abortSignal),
         this.customTileImageBitmapMaker(getNeighborIndex(tileIndex, "W"), options.abortSignal),
         this.customTileImageBitmapMaker(getNeighborIndex(tileIndex, "NW"), options.abortSignal),
-      ]
+      ];
     }
 
     return [];
@@ -406,92 +420,103 @@ export class ShadyGroove {
    * This function is somewhat internal but left public for debugging purpose
    * or to export  static asset.
    */
-  async computeTileGl(tileIndex: TileIndex,
+  async computeTileGl(
+    tileIndex: TileIndex,
     options: {
-      abortSignal?: AbortSignal,
-    } = {}
+      abortSignal?: AbortSignal;
+    } = {},
   ): Promise<ImageBitmap | null> {
-    const tilePromises = await Promise.allSettled(this.makeTilePromises(tileIndex, options));    
+    const tilePromises = await Promise.allSettled(this.makeTilePromises(tileIndex, options));
 
     if (tilePromises[0].status !== "fulfilled" || !tilePromises[0].value) {
       return null;
     }
 
-    if(options.abortSignal?.aborted) {
+    if (options.abortSignal?.aborted) {
       return null;
     }
-    
-    const imageBitmaps = tilePromises.map((res) => res.status === "fulfilled" ? res.value : null);
+
+    const imageBitmaps = tilePromises.map((res) => (res.status === "fulfilled" ? res.value : null));
     const paddedCanvas = createPaddedTileOffscreenCanvas(imageBitmaps, this.padding);
     const paddedTile = await createImageBitmap(paddedCanvas);
     const tileSize = imageBitmaps[0]?.width as number;
     const gaussianScaleSpaceWeights = this.gaussianScaleSpaceWeights[tileIndex.z];
 
     this.initGl(tileSize);
-    const tex = Texture.fromImageSource(this.rctx, paddedTile);
-    
-    const lowPassTextures: Record<number, Texture | null> = {
-      3: null,
-      7: null,
-      15: null,
-      30: null,
-      60: null,
-    } as const;
+    // The pipeline is shared across tile requests. Only textures created by this
+    // render are temporary; freeing the context also destroys the shared shaders.
+    const tileTextures: Texture[] = [];
+    try {
+      const tex = Texture.fromImageSource(this.rctx, paddedTile);
+      tileTextures.push(tex);
 
-    const kernelRadii = Object.keys(lowPassTextures).map((r) => Number.parseInt(r, 10));
+      const lowPassTextures: Record<number, Texture | null> = {
+        3: null,
+        7: null,
+        15: null,
+        30: null,
+        60: null,
+      } as const;
 
-    for (const radius of kernelRadii) {
-      const kernel = Array.from(buildGaussianKernelFromRadius(radius));
+      const kernelRadii = Object.keys(lowPassTextures).map((r) => Number.parseInt(r, 10));
 
-      this.lowPassHorizontalNode.setUniformNumber("u_kernel", kernel);
-      this.lowPassHorizontalNode.setUniformNumber("u_kernelSize", kernel.length, UNIFORM_TYPE.INT);
-      this.lowPassHorizontalNode.setUniformBoolean("u_isHorizontalPass", true);
-      this.lowPassHorizontalNode.setUniformTexture2D("u_tile", tex);
-      this.lowPassHorizontalNode.render();
+      for (const radius of kernelRadii) {
+        const kernel = Array.from(buildGaussianKernelFromRadius(radius));
 
-      this.lowPassVerticalNode.setUniformNumber("u_kernel", kernel);
-      this.lowPassVerticalNode.setUniformNumber("u_kernelSize", kernel.length, UNIFORM_TYPE.INT);
-      this.lowPassVerticalNode.setUniformBoolean("u_isHorizontalPass", false);
-      this.lowPassVerticalNode.setUniformTexture2D("u_tile", this.lowPassHorizontalNode);
-      this.lowPassVerticalNode.render();
+        this.lowPassHorizontalNode.setUniformNumber("u_kernel", kernel);
+        this.lowPassHorizontalNode.setUniformNumber("u_kernelSize", kernel.length, UNIFORM_TYPE.INT);
+        this.lowPassHorizontalNode.setUniformBoolean("u_isHorizontalPass", true);
+        this.lowPassHorizontalNode.setUniformTexture2D("u_tile", tex);
+        this.lowPassHorizontalNode.render();
+        tileTextures.push(this.lowPassHorizontalNode.getOutputTexture());
 
-      lowPassTextures[radius] = this.lowPassVerticalNode.getOutputTexture();
+        this.lowPassVerticalNode.setUniformNumber("u_kernel", kernel);
+        this.lowPassVerticalNode.setUniformNumber("u_kernelSize", kernel.length, UNIFORM_TYPE.INT);
+        this.lowPassVerticalNode.setUniformBoolean("u_isHorizontalPass", false);
+        this.lowPassVerticalNode.setUniformTexture2D("u_tile", this.lowPassHorizontalNode);
+        this.lowPassVerticalNode.render();
+
+        lowPassTextures[radius] = this.lowPassVerticalNode.getOutputTexture();
+        tileTextures.push(lowPassTextures[radius]);
+      }
+
+      this.combineNode.setUniformRGB("u_tint", this.color);
+      this.combineNode.setUniformTexture2D("u_tile", tex);
+      this.combineNode.setUniformNumber("u_alpha", this.alpha);
+      this.combineNode.setUniformNumber("u_weightLowPass_3", gaussianScaleSpaceWeights.hKernel3);
+      this.combineNode.setUniformNumber("u_weightLowPass_7", gaussianScaleSpaceWeights.hKernel7);
+      this.combineNode.setUniformNumber("u_weightLowPass_15", gaussianScaleSpaceWeights.hKernel15);
+      this.combineNode.setUniformNumber("u_weightLowPass_30", gaussianScaleSpaceWeights.hKernel30);
+      this.combineNode.setUniformNumber("u_weightLowPass_60", gaussianScaleSpaceWeights.hKernel60);
+
+      this.combineNode.setUniformTexture2D("u_tileLowPass_3", lowPassTextures[3] as Texture);
+      this.combineNode.setUniformTexture2D("u_tileLowPass_7", lowPassTextures[7] as Texture);
+      this.combineNode.setUniformTexture2D("u_tileLowPass_15", lowPassTextures[15] as Texture);
+      this.combineNode.setUniformTexture2D("u_tileLowPass_30", lowPassTextures[30] as Texture);
+      this.combineNode.setUniformTexture2D("u_tileLowPass_60", lowPassTextures[60] as Texture);
+
+      this.combineNode.render();
+
+      // Snapshot the pixels synchronously, before another request can render.
+      // Bitmap creation can then finish asynchronously after texture cleanup.
+      return createImageBitmap(
+        this.combineNode.getImageData({
+          x: this.padding,
+          y: this.padding,
+          w: tileSize,
+          h: tileSize,
+        }),
+      );
+    } finally {
+      for (const texture of tileTextures) texture.free();
+      paddedTile.close();
     }
-
-    this.combineNode.setUniformRGB("u_tint", this.color);
-    this.combineNode.setUniformTexture2D("u_tile", tex);
-    this.combineNode.setUniformNumber("u_alpha", this.alpha);
-    this.combineNode.setUniformNumber("u_weightLowPass_3", gaussianScaleSpaceWeights.hKernel3);
-    this.combineNode.setUniformNumber("u_weightLowPass_7", gaussianScaleSpaceWeights.hKernel7);
-    this.combineNode.setUniformNumber("u_weightLowPass_15", gaussianScaleSpaceWeights.hKernel15);
-    this.combineNode.setUniformNumber("u_weightLowPass_30", gaussianScaleSpaceWeights.hKernel30);
-    this.combineNode.setUniformNumber("u_weightLowPass_60", gaussianScaleSpaceWeights.hKernel60);
-
-    this.combineNode.setUniformTexture2D("u_tileLowPass_3", lowPassTextures[3] as Texture);
-    this.combineNode.setUniformTexture2D("u_tileLowPass_7", lowPassTextures[7] as Texture);
-    this.combineNode.setUniformTexture2D("u_tileLowPass_15", lowPassTextures[15] as Texture);
-    this.combineNode.setUniformTexture2D("u_tileLowPass_30", lowPassTextures[30] as Texture);
-    this.combineNode.setUniformTexture2D("u_tileLowPass_60", lowPassTextures[60] as Texture);
-
-    this.combineNode.render();
-
-    const imageBitmap = await this.combineNode.getImageBitmap({
-      x: this.padding,
-      y: this.padding,
-      w: tileSize,
-      h: tileSize,
-    });
-
-    this.rctx.free();
-
-    return imageBitmap
   }
-
 
   /**
    * Add the ShadyGroove layer to the map
    */
-  addToMap(map: maplibregl.Map, beforeId?: string): {sourceId: string, layerId: string} {
+  addToMap(map: MLMap, beforeId?: string): { sourceId: string; layerId: string } {
     this.map = map;
 
     // Adding the tile source for our ShadyGroove layer
@@ -503,14 +528,17 @@ export class ShadyGroove {
     });
 
     // Adding the ShadyGroove layer
-    map.addLayer({
-      id: this.layerId,
-      source: this.sourceId,
-      type: 'raster',
-      layout: {
-        visibility: "visible"
-      }
-    }, beforeId);
+    map.addLayer(
+      {
+        id: this.layerId,
+        source: this.sourceId,
+        type: "raster",
+        layout: {
+          visibility: "visible",
+        },
+      },
+      beforeId,
+    );
 
     return {
       sourceId: this.sourceId,
@@ -519,9 +547,9 @@ export class ShadyGroove {
   }
 
   /**
-   * 
-   * @param isVisible 
-   * @returns 
+   *
+   * @param isVisible
+   * @returns
    */
   setVisibility(isVisible: boolean) {
     if (!this.map) {
@@ -548,4 +576,3 @@ export class ShadyGroove {
     return this.map.getLayoutProperty(this.layerId, "visibility") === "visible";
   }
 }
-

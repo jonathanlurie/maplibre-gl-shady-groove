@@ -1,5 +1,5 @@
 import QuickLRU from "quick-lru";
-import {fetchAsImageBitmap, wrapTileIndex } from "./tools";
+import { fetchAsImageBitmap, wrapTileIndex } from "./tools";
 import type { TileIndex } from "./types";
 
 export type TileCacheOptions = {
@@ -47,14 +47,14 @@ export class TileCache {
       }
 
       fetchAsImageBitmap(tileUrl, abortSignal)
-      .then((imgBtmp) => {
-        this.tilePool.set(tileUrl, imgBtmp);
-        resolve(imgBtmp);
-      })
-      .catch(() => {
-        this.unavailableTiles.add(tileUrl);
-        resolve(null);
-      })
+        .then((imgBtmp) => {
+          this.tilePool.set(tileUrl, imgBtmp);
+          resolve(imgBtmp);
+        })
+        .catch(() => {
+          this.unavailableTiles.add(tileUrl);
+          resolve(null);
+        });
     });
   }
 

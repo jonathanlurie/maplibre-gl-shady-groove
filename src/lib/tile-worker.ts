@@ -1,9 +1,18 @@
-import type { TileProcesingWorkerMessage } from "./ShadyGroove"
-import { computeElevationDelta, filterFloatImage, floatImageToCanvas, gaussianBlurImageData, getElevationData, imageBitmapToOffscreenCanvas, makeEaseInOutSineFilter, makeEaseOutCubicFilter, makeEaseOutQuadFilter, makeEaseOutSineFilter, makeLinearFilter, sumFloatImages, trimPaddedTile } from "./tools";
-
+import type { TileProcesingWorkerMessage } from "./ShadyGroove";
+import {
+  computeElevationDelta,
+  filterFloatImage,
+  floatImageToCanvas,
+  gaussianBlurImageData,
+  getElevationData,
+  imageBitmapToOffscreenCanvas,
+  makeEaseOutSineFilter,
+  sumFloatImages,
+  trimPaddedTile,
+} from "./tools";
 
 self.onmessage = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
-  const {paddedTile, tileSize, padding, terrainEncoding, gaussianScaleSpaceWeights, color} = e.data;
+  const { paddedTile, tileSize, padding, terrainEncoding, gaussianScaleSpaceWeights, color } = e.data;
 
   const paddedCanvas = imageBitmapToOffscreenCanvas(paddedTile);
 
@@ -22,14 +31,14 @@ self.onmessage = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
   const eleDeltaBlur3 = computeElevationDelta(blurredElevation3, elevationData, true);
 
   const multiResDelta = sumFloatImages([
-    {fImg: eleDeltaBlur60, ratio: gaussianScaleSpaceWeights.hKernel60 },
-    {fImg: eleDeltaBlur30, ratio: gaussianScaleSpaceWeights.hKernel30 },
-    {fImg: eleDeltaBlur15, ratio: gaussianScaleSpaceWeights.hKernel15 },
-    {fImg: eleDeltaBlur7, ratio: gaussianScaleSpaceWeights.hKernel7 },
-    {fImg: eleDeltaBlur3, ratio: gaussianScaleSpaceWeights.hKernel3 },
+    { fImg: eleDeltaBlur60, ratio: gaussianScaleSpaceWeights.hKernel60 },
+    { fImg: eleDeltaBlur30, ratio: gaussianScaleSpaceWeights.hKernel30 },
+    { fImg: eleDeltaBlur15, ratio: gaussianScaleSpaceWeights.hKernel15 },
+    { fImg: eleDeltaBlur7, ratio: gaussianScaleSpaceWeights.hKernel7 },
+    { fImg: eleDeltaBlur3, ratio: gaussianScaleSpaceWeights.hKernel3 },
   ]);
 
-  const filteredMultiResDelta = filterFloatImage(multiResDelta, makeEaseOutSineFilter(2000, 255))
+  const filteredMultiResDelta = filterFloatImage(multiResDelta, makeEaseOutSineFilter(2000, 255));
   // const filteredMultiResDelta = filterFloatImage(multiResDelta, makeEaseInOutSineFilter(2000, 255))
   // const filteredMultiResDelta = filterFloatImage(multiResDelta, makeLinearFilter(2000, 255))
   // const filteredMultiResDelta = filterFloatImage(multiResDelta, makeEaseOutQuadFilter(3000, 255))
@@ -37,6 +46,6 @@ self.onmessage = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
 
   const paddedShadedTile = floatImageToCanvas(filteredMultiResDelta, color);
   const trimmedShadedImageBitmap = await trimPaddedTile(paddedShadedTile, tileSize, padding);
-   
-  self.postMessage(trimmedShadedImageBitmap, [trimmedShadedImageBitmap])
-}
+
+  self.postMessage(trimmedShadedImageBitmap, [trimmedShadedImageBitmap]);
+};

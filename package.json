@@ -1,26 +1,57 @@
 {
-  "name": "ao-test",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@webgpu/types": "^0.1.68",
-    "typescript": "^5.9.3",
-    "vite": "npm:rolldown-vite@7.2.5"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@7.2.5"
-  },
-  "dependencies": {
-    "basemapkit": "^0.5.0",
-    "maplibre-gl": "^5.15.0",
-    "pmtiles": "^4.3.1",
-    "quick-lru": "^7.3.0",
-    "raster-gl": "^0.1.0"
-  }
+	"name": "maplibre-gl-shady-groove",
+	"private": false,
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Gaussian scale-space terrain cavity shading for MapLibre GL.",
+	"files": ["dist-lib"],
+	"main": "./dist-lib/maplibre-gl-shady-groove.js",
+	"module": "./dist-lib/maplibre-gl-shady-groove.js",
+	"types": "dist-lib/maplibre-gl-shady-groove.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist-lib/maplibre-gl-shady-groove.d.ts",
+			"import": "./dist-lib/maplibre-gl-shady-groove.js"
+		}
+	},
+	"keywords": [
+		"maplibre",
+		"custom-layer",
+		"ambiant-occlusion"
+	],
+	"author": "Jonathan Lurie",
+	"homepage": "https://github.com/geoblocks/maplibre-gl-shady-groove",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/geoblocks/maplibre-gl-shady-groove.git"
+	},
+	"scripts": {
+		"dev": "vite",
+		"test": "node tests/run-webgl.mjs",
+		"build": "tsc && vite build",
+		"build:lib": "tsc -p tsconfig.lib.json && vite build -c vite.config-lib.ts",
+		"prepack": "npm run build:lib",
+		"test:package": "node tests/run-package.mjs",
+		"preview": "vite preview",
+		"biome:fix": "biome check --max-diagnostics=1000 --write"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.12",
+		"@types/node": "^26.5.0",
+		"@typescript/typescript6": "^6.0.2",
+		"basemapkit": "^0.5.2",
+		"maplibre-gl": "^6.7.0",
+		"pmtiles": "^4.5.0",
+		"typescript": "^7.0.2",
+		"vite": "^8.2.2",
+		"vite-plugin-dts": "^5.1.0"
+	},
+	"peerDependencies": {
+		"maplibre-gl": "^6.7.0"
+	},
+	"dependencies": {
+		"quick-lru": "^7.3.0",
+		"raster-gl": "^0.1.1"
+	}
 }
