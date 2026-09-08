@@ -1,4 +1,11 @@
-import { type AddProtocolAction, addProtocol, removeProtocol, type Map as MLMap, type RequestParameters } from "maplibre-gl";
+import {
+  type AddProtocolAction,
+  addProtocol,
+  type Map as MLMap,
+  type RasterLayerSpecification,
+  type RequestParameters,
+  removeProtocol,
+} from "maplibre-gl";
 import { ProcessingNode, RasterContext, Texture, UNIFORM_TYPE } from "raster-gl";
 import {
   defaultGaussianScaleSpaceWeights,
@@ -90,7 +97,6 @@ out vec4 fragColor;
 
 uniform vec3 u_tint;
 
-uniform float u_alpha;
 uniform float u_weightLowPass_3;
 uniform float u_weightLowPass_7;
 uniform float u_weightLowPass_15;
@@ -134,7 +140,6 @@ void main() {
 
   float easedValue = easeOutSine(multiresWeightedDelta, 2000., 1.);
   fragColor = vec4(u_tint.r, u_tint.g, u_tint.b, easedValue);
-  fragColor.a *= u_alpha;
 }
 `.trim();
 
@@ -482,7 +487,6 @@ export class ShadyGroove {
 
       this.combineNode.setUniformRGB("u_tint", this.color);
       this.combineNode.setUniformTexture2D("u_tile", tex);
-      this.combineNode.setUniformNumber("u_alpha", this.alpha);
       this.combineNode.setUniformNumber("u_weightLowPass_3", gaussianScaleSpaceWeights.hKernel3);
       this.combineNode.setUniformNumber("u_weightLowPass_7", gaussianScaleSpaceWeights.hKernel7);
       this.combineNode.setUniformNumber("u_weightLowPass_15", gaussianScaleSpaceWeights.hKernel15);
@@ -539,7 +543,10 @@ export class ShadyGroove {
         layout: {
           visibility: "visible",
         },
-      },
+        paint: {
+          "raster-opacity": this.alpha,
+        },
+      } as RasterLayerSpecification,
       beforeId,
     );
 
@@ -549,6 +556,9 @@ export class ShadyGroove {
     };
   }
 
+  /**
+   * Remove the protocol and the ShadyGroove layer from the map
+   */
   removeFromMap() {
     if (!this.map) {
       console.warn("This layer is not yet added to the map.");
@@ -596,5 +606,29 @@ export class ShadyGroove {
     }
 
     return this.map.getLayoutProperty(this.layerId, "visibility") === "visible";
+  }
+
+  /**
+   * Set the opacity of the ShadyGroove layer with a value in the range [0, 1]
+   */
+  setOpacity(opacity: number) {
+    if (!this.map) {
+      console.warn("This layer is not yet added to the map.");
+      return;
+    }
+
+    this.map.setPaintProperty(this.layerId, "raster-opacity", opacity);
+  }
+
+  /**
+   * Get the opacity of the ShadyGroove layer
+   */
+  getOpacity() {
+    if (!this.map) {
+      console.warn("This layer is not yet added to the map.");
+      return 0;
+    }
+
+    return this.map.getPaintProperty(this.layerId, "raster-opacity") as number;
   }
 }

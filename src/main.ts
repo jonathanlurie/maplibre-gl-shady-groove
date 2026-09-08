@@ -15,12 +15,14 @@ const demo = async () => {
   const mapterhornTileJson = "https://tiles.mapterhorn.com/tile.json";
   const mapterhornUrlPattern = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 
+  const defaultOpacity = 0.7;
+
   const sg = new ShadyGroove({
     urlPattern: mapterhornUrlPattern,
     terrainEncoding,
     color: [36, 70, 125],
     maxzoom: 16,
-    alpha: 0.99,
+    alpha: defaultOpacity,
   });
 
   const style = getStyle("avenue", {
@@ -47,12 +49,13 @@ const demo = async () => {
 
   await new Promise((resolve) => map.on("load", resolve));
 
-  sg.addToMap(map, "water_stream");
+  // Adding the Shady Groove layer to the map, underneath the "address_label" layer
+  sg.addToMap(map, "address_label");
 
   // Adding a checkbox to toggle the visibility of the ShadyGroove layer
   const checkboxLayer = document.getElementById("toggle-layer-cb") as HTMLInputElement;
   checkboxLayer.addEventListener("change", () => {
-    sg.setVisibility(checkboxLayer.checked);
+    sg.setOpacity(checkboxLayer.checked ? defaultOpacity : 0);
   });
 };
 
