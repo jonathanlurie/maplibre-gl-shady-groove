@@ -1,4 +1,4 @@
-import type { AddProtocolAction, Map as MLMap, RequestParameters } from "maplibre-gl";
+import { type AddProtocolAction, addProtocol, removeProtocol, type Map as MLMap, type RequestParameters } from "maplibre-gl";
 import { ProcessingNode, RasterContext, Texture, UNIFORM_TYPE } from "raster-gl";
 import {
   defaultGaussianScaleSpaceWeights,
@@ -517,6 +517,9 @@ export class ShadyGroove {
    * Add the ShadyGroove layer to the map
    */
   addToMap(map: MLMap, beforeId?: string): { sourceId: string; layerId: string } {
+    // Register custom protocol for this instance of ShadyGroove
+    addProtocol(this.getProtocolName(), this.getProtocolLoadFunction());
+
     this.map = map;
 
     // Adding the tile source for our ShadyGroove layer
@@ -544,6 +547,25 @@ export class ShadyGroove {
       sourceId: this.sourceId,
       layerId: this.layerId,
     };
+  }
+
+  removeFromMap() {
+    if (!this.map) {
+      console.warn("This layer is not yet added to the map.");
+      return;
+    }
+
+    if (this.map.getLayer(this.layerId)) {
+      this.map.removeLayer(this.layerId);
+    }
+
+    if (this.map.getSource(this.sourceId)) {
+      this.map.removeSource(this.sourceId);
+    }
+
+    removeProtocol(this.getProtocolName());
+
+    this.map = null;
   }
 
   /**

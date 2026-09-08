@@ -23,9 +23,6 @@ const demo = async () => {
     alpha: 0.99,
   });
 
-  // Register custom protocolfor this instance of ShadyGroove
-  maplibregl.addProtocol(sg.getProtocolName(), sg.getProtocolLoadFunction());
-
   const style = getStyle("avenue", {
     pmtiles: "https://fsn1.your-objectstorage.com/public-map-data/pmtiles/planet.pmtiles",
     sprite:
