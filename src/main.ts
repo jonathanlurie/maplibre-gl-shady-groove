@@ -15,12 +15,12 @@ const demo = async () => {
   const mapterhornTileJson = "https://tiles.mapterhorn.com/tile.json";
   const mapterhornUrlPattern = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 
-  const defaultOpacity = 0.7;
+  const defaultOpacity = 0.6;
 
   const sg = new ShadyGroove({
     urlPattern: mapterhornUrlPattern,
     terrainEncoding,
-    color: [36, 70, 125],
+    color: [25, 25, 100],
     maxzoom: 16,
     alpha: defaultOpacity,
   });
