@@ -15,7 +15,9 @@ const demo = async () => {
   const mapterhornTileJson = "https://tiles.mapterhorn.com/tile.json";
   const mapterhornUrlPattern = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 
-  const defaultOpacity = 0.6;
+  const opacityRange = document.getElementById("opacity-range") as HTMLInputElement;
+
+  const defaultOpacity = parseFloat(opacityRange.value);
 
   const sg = new ShadyGroove({
     urlPattern: mapterhornUrlPattern,
@@ -52,11 +54,62 @@ const demo = async () => {
   // Adding the Shady Groove layer to the map, underneath the "address_label" layer
   sg.addToMap(map, "address_label");
 
-  // Adding a checkbox to toggle the visibility of the ShadyGroove layer
-  const checkboxLayer = document.getElementById("toggle-layer-cb") as HTMLInputElement;
-  checkboxLayer.addEventListener("change", () => {
-    sg.setOpacity(checkboxLayer.checked ? defaultOpacity : 0);
+  // Adding an event listener to the opacity range input to update the ShadyGroove layer's opacity
+  opacityRange.addEventListener("input", () => {
+    sg.setOpacity(parseFloat(opacityRange.value));
   });
 };
 
-demo();
+const demo2 = async () => {
+  maplibregl.addProtocol("pmtiles", new Protocol().tile);
+
+  const terrainEncoding = "terrarium";
+  const mapterhornTileJson = "https://tiles.mapterhorn.com/tile.json";
+  const mapterhornUrlPattern = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
+
+  const opacityRange = document.getElementById("opacity-range") as HTMLInputElement;
+  const defaultOpacity = parseFloat(opacityRange.value);
+
+  const sg = new ShadyGroove({
+    urlPattern: mapterhornUrlPattern,
+    terrainEncoding,
+    color: [0, 10, 30],
+    maxzoom: 16,
+    alpha: defaultOpacity,
+  });
+
+  const style = getStyle("atmosphere", {
+    pmtiles: "https://fsn1.your-objectstorage.com/public-map-data/pmtiles/planet.pmtiles",
+    sprite:
+      "https://raw.githubusercontent.com/jonathanlurie/phosphor-mlgl-sprite/refs/heads/main/sprite/phosphor-diecut",
+    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    lang: "en",
+    hidePOIs: true,
+    globe: true,
+    terrain: {
+      tilejson: mapterhornTileJson,
+      encoding: terrainEncoding,
+      hillshading: true,
+    },
+  });
+
+  const map = new maplibregl.Map({
+    container: "app",
+    hash: true,
+    style: style,
+    maxPitch: 80,
+  });
+
+  await new Promise((resolve) => map.on("load", resolve));
+
+  // Adding the Shady Groove layer to the map, underneath the "address_label" layer
+  sg.addToMap(map);
+
+  // Adding an event listener to the opacity range input to update the ShadyGroove layer's opacity
+  opacityRange.addEventListener("input", () => {
+    sg.setOpacity(parseFloat(opacityRange.value));
+  });
+};
+
+// demo();
+demo2();

@@ -20,11 +20,11 @@
 		"ambiant-occlusion"
 	],
 	"author": "Jonathan Lurie",
-	"homepage": "https://github.com/geoblocks/maplibre-gl-shady-groove",
+	"homepage": "https://github.com/jonathanlurie/maplibre-gl-shady-groove",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/geoblocks/maplibre-gl-shady-groove.git"
+		"url": "https://github.com/jonathanlurie/maplibre-gl-shady-groove.git"
 	},
 	"scripts": {
 		"dev": "vite",

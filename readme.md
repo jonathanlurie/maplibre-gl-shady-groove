@@ -1,5 +1,5 @@
 # Shady Groove
-Gaussian scale-space terrain shading for MapLibre GL JS, because grooves, trenches, valleys, pits, ravines, ditches, cavities, canyons, and chasms are more often than not dark places, and deserve to be shown as such.
+**Better terrain reading** thanks to better terrain shading, for MapLibre GL JS. Because grooves, trenches, valleys, pits, ravines, ditches, cavities, canyons, and chasms are more often than not dark places, and deserve to be shown as such.
 
 ![logo](resources/logo.png)
 
@@ -43,6 +43,10 @@ map.on("load", () => {
 ```
 
 ## How it looks like
+![](resources/screenshots/terrain-header.jpeg)
+
+But let's compare...
+
 | ❌ Without Shady Groove | ✅ With Shady Groove |
 |:---:|:---:|
 | ![](resources/screenshots/compare-1.jpeg) | ![](resources/screenshots/compare-2.jpeg) |
@@ -54,9 +58,16 @@ map.on("load", () => {
 | ![](resources/screenshots/compare-13.jpeg) | ![](resources/screenshots/compare-14.jpeg) |
 | ![](resources/screenshots/compare-15.jpeg) | ![](resources/screenshots/compare-16.jpeg) |
 | ![](resources/screenshots/compare-17.jpeg) | ![](resources/screenshots/compare-18.jpeg) |
+| ![](resources/screenshots/compare-19.jpeg) | ![](resources/screenshots/compare-20.jpeg) |
+| ![](resources/screenshots/compare-21.jpeg) | ![](resources/screenshots/compare-22.jpeg) |
+| ![](resources/screenshots/compare-23.jpeg) | ![](resources/screenshots/compare-24.jpeg) |
+| ![](resources/screenshots/compare-25.jpeg) | ![](resources/screenshots/compare-26.jpeg) |
+| ![](resources/screenshots/compare-27.jpeg) | ![](resources/screenshots/compare-28.jpeg) |
+
 
 ## How it works?
 There is a [full explanation here](SHADING_ALGORITHM.md), but in short, Shady Groove:
+- uses gaussian scale spaces
 - computes soft versions of terrains tiles, with increasing gaussian kernel sizes
 - computes the difference between each soft from the original terrain
 - keeps only the differences if they are in the direction that the soft is above the original, to highlight depressions and not peaks
