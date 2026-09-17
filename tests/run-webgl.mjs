@@ -127,7 +127,7 @@ try {
 		const result = await send(
 			"Runtime.evaluate",
 			{
-				expression: process.env.TEST_EXPRESSION ?? "import('/tests/webgl.ts').then(module => module.run())",
+				expression: process.env.TEST_EXPRESSION ?? "(async () => { const gpu = await (await import('/tests/webgl.ts')).run(); const loading = await (await import('/tests/tile-loading.ts')).run(); return { passed: [...gpu.passed, ...loading.passed], failed: [...gpu.failed, ...loading.failed] }; })()",
 				awaitPromise: true,
 				returnByValue: true,
 			},

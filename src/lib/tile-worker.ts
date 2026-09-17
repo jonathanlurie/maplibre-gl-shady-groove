@@ -11,10 +11,11 @@ import {
   trimPaddedTile,
 } from "./tools";
 
-self.onmessage = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
+const processTile = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
   const { paddedTile, tileSize, padding, terrainEncoding, gaussianScaleSpaceWeights, color } = e.data;
 
   const paddedCanvas = imageBitmapToOffscreenCanvas(paddedTile);
+  paddedTile.close();
 
   const elevationData = getElevationData(paddedCanvas, terrainEncoding);
 
@@ -48,4 +49,11 @@ self.onmessage = async (e: MessageEvent<TileProcesingWorkerMessage>) => {
   const trimmedShadedImageBitmap = await trimPaddedTile(paddedShadedTile, tileSize, padding);
 
   self.postMessage(trimmedShadedImageBitmap, [trimmedShadedImageBitmap]);
+};
+
+self.onmessage = (e: MessageEvent<TileProcesingWorkerMessage>) => {
+  // An async handler's rejected promise does not trigger Worker.onerror.
+  void processTile(e).catch((error: unknown) => {
+    self.postMessage({ error: error instanceof Error ? error.message : String(error) });
+  });
 };

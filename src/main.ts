@@ -8,7 +8,7 @@ import { ShadyGroove } from "./lib";
 
 maplibregl.setWorkerUrl(workerUrl);
 
-const demo = async () => {
+const defaultDemo = async () => {
   maplibregl.addProtocol("pmtiles", new Protocol().tile);
 
   const terrainEncoding = "terrarium";
@@ -44,8 +44,8 @@ const demo = async () => {
 
   const map = new maplibregl.Map({
     container: "app",
-    hash: true,
-    style: style,
+    center: [7.0219, 46.1592],
+    zoom: 12,    style: style,
     maxPitch: 80,
   });
 
@@ -60,7 +60,7 @@ const demo = async () => {
   });
 };
 
-const demo2 = async () => {
+const atmosphereDemo = async () => {
   maplibregl.addProtocol("pmtiles", new Protocol().tile);
 
   const terrainEncoding = "terrarium";
@@ -95,7 +95,8 @@ const demo2 = async () => {
 
   const map = new maplibregl.Map({
     container: "app",
-    hash: true,
+    center: [7.0219, 46.1592],
+    zoom: 12,
     style: style,
     maxPitch: 80,
   });
@@ -111,5 +112,10 @@ const demo2 = async () => {
   });
 };
 
-// demo();
-demo2();
+
+const demoId = (new URLSearchParams(window.location.search)).get("demo");
+if (demoId === "atmosphere") {
+  atmosphereDemo();
+} else {
+  defaultDemo();
+}

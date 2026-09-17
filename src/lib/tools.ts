@@ -161,10 +161,20 @@ export async function loadImgFetch(url: string): Promise<HTMLImageElement | null
   });
 }
 
+export class ImageFetchError extends Error {
+  readonly status: number;
+
+  constructor(status: number, url: string) {
+    super(`Fetch failed: ${status} (${url})`);
+    this.name = "ImageFetchError";
+    this.status = status;
+  }
+}
+
 export async function fetchAsImageBitmap(url: string, abortSignal?: AbortSignal): Promise<ImageBitmap> {
   const response = await fetch(url, { signal: abortSignal });
   if (!response.ok) {
-    throw new Error(`Fetch failed: ${response.status}`);
+    throw new ImageFetchError(response.status, url);
   }
 
   const blob = await response.blob();

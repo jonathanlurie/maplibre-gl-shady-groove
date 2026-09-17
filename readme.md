@@ -3,6 +3,8 @@
 
 ![logo](resources/logo.png)
 
+[Demo with Basemapkit's Avenue style](https://shady-groove.jnth.io?demo=avenue) - [Demo with Basemapkit Atmosphere style](https://shady-groove.jnth.io?demo=atmosphere)
+
 ## Install it
 ```bash
 npm install maplibre-gl-shady-groove

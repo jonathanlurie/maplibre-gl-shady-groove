@@ -79,23 +79,23 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
   },
 
   10: {
-    hKernel60: 1,
-    hKernel30: 1,
+    hKernel60: 0.75,
+    hKernel30: 0.75,
     hKernel15: 3,
     hKernel7: 3,
     hKernel3: 4,
   },
 
   11: {
-    hKernel60: 0.5,
+    hKernel60: 2,
     hKernel30: 2,
-    hKernel15: 2,
-    hKernel7: 4,
-    hKernel3: 6,
+    hKernel15: 3,
+    hKernel7: 3,
+    hKernel3: 4,
   },
 
   12: {
-    hKernel60: 1.5,
+    hKernel60: 6,
     hKernel30: 3,
     hKernel15: 3,
     hKernel7: 10,
@@ -103,24 +103,24 @@ export const defaultGaussianScaleSpaceWeights: GaussianScaleSpaceWeightsPerZoomL
   },
 
   13: {
-    hKernel60: 4,
-    hKernel30: 4,
+    hKernel60: 8,
+    hKernel30: 7,
     hKernel15: 10,
     hKernel7: 10,
     hKernel3: 15,
   },
 
   14: {
-    hKernel60: 10,
-    hKernel30: 4,
+    hKernel60: 15,
+    hKernel30: 8,
     hKernel15: 6,
     hKernel7: 12,
     hKernel3: 12,
   },
 
-  15: {
-    hKernel60: 15,
-    hKernel30: 8,
+  15: {   
+    hKernel60: 30,
+    hKernel30: 16,
     hKernel15: 10,
     hKernel7: 18,
     hKernel3: 20,

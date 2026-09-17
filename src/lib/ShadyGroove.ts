@@ -117,6 +117,26 @@ float easeOutSine(float value, float maxValue, float scale) {
   return sin(((min(value, maxValue) / maxValue) * PI) / 2.) * scale;
 }
 
+float easeOutCubic(float value, float maxValue, float scale) {
+  float t = min(value, maxValue) / maxValue;
+  return (1. - pow(1. - t, 3.)) * scale;
+}
+
+float easeInQuad(float value, float maxValue, float scale) {
+  float t = min(value, maxValue) / maxValue;
+  return t * t * scale;
+}
+
+float easeLinear(float value, float maxValue, float scale) {
+  float t = min(value, maxValue) / maxValue;
+  return t * scale;
+}
+
+float easeOutQuart(float value, float maxValue, float scale) {
+  float t = min(value, maxValue) / maxValue;
+  return 1. - pow(1. - t, 4.) * scale;
+}
+
 
 void main() {
   float eleTile = terrariumToElevation(texture(u_tile, uv));
@@ -138,7 +158,12 @@ void main() {
     + (eleDeltaLowPass30 * u_weightLowPass_30)
     + (eleDeltaLowPass60 * u_weightLowPass_60);
 
-  float easedValue = easeOutSine(multiresWeightedDelta, 2000., 1.);
+  // float easedValue = easeOutSine(multiresWeightedDelta, 2000., 1.);
+  // float easedValue = easeOutCubic(multiresWeightedDelta, 6000., 1.);
+  // float easedValue = easeLinear(multiresWeightedDelta, 2000., 1.);
+  float easedValue = easeOutQuart(multiresWeightedDelta, 6500., 1.);
+
+
   fragColor = vec4(u_tint.r, u_tint.g, u_tint.b, easedValue);
 }
 `.trim();
@@ -153,6 +178,8 @@ export type TileProcesingWorkerMessage = {
   color: RGBColor;
   tileSize: number;
 };
+
+export type TileProcessingWorkerResult = ImageBitmap | { error: string };
 
 export type CustomTileImageBitmapMaker = (
   tileIndex: TileIndex,
@@ -281,6 +308,13 @@ export class ShadyGroove {
           tile = await this.computeTile({ z, x, y }, { abortSignal: abortController?.signal });
         }
 
+        if (abortController?.signal.aborted) {
+          tile?.close();
+          throw new DOMException("Aborted", "AbortError");
+        }
+        // MapLibre only marks raster tiles loaded when data contains an image.
+        // A successful null response can leave the tile stuck in loading state.
+        if (!tile) throw new Error(`Shady Groove terrain tile unavailable: ${z}/${x}/${y}`);
         return { data: tile };
       } catch (err) {
         if (abortController?.signal?.aborted) {
@@ -340,47 +374,94 @@ export class ShadyGroove {
       abortSignal?: AbortSignal;
     } = {},
   ): Promise<ImageBitmap | null> {
-    const tilePromises = await Promise.allSettled(this.makeTilePromises(tileIndex, options));
+    const prepared = await this.prepareTile(tileIndex, options);
+    if (!prepared) return null;
+    const { paddedTile, tileSize } = prepared;
 
-    if (tilePromises[0].status !== "fulfilled" || !tilePromises[0].value) {
-      return null;
-    }
-
-    if (options.abortSignal?.aborted) {
-      return null;
-    }
-
-    const imageBitmaps = tilePromises.map((res) => (res.status === "fulfilled" ? res.value : null));
-    const paddedCanvas = createPaddedTileOffscreenCanvas(imageBitmaps, this.padding);
-    const paddedTile = await createImageBitmap(paddedCanvas);
-    const tileSize = imageBitmaps[0]?.width as number;
-
-    return new Promise((resolve) => {
-      const tileWorker = new TileWorker();
-
-      options.abortSignal?.addEventListener("abort", () => {
-        console.log("ABORT tile: ", tileIndex);
-        tileWorker.terminate();
-      });
-
-      tileWorker.postMessage(
-        {
-          tileIndex,
-          tileSize,
-          terrainEncoding: this.terrainEncoding,
-          paddedTile,
-          padding: this.padding,
-          gaussianScaleSpaceWeights: this.gaussianScaleSpaceWeights[tileIndex.z],
-          color: this.color,
-        },
-        [paddedTile],
-      );
-
-      tileWorker.onmessage = (e: MessageEvent<ImageBitmap>) => {
-        tileWorker.terminate();
-        resolve(e.data);
+    return new Promise((resolve, reject) => {
+      let tileWorker: Worker | undefined;
+      const cleanup = () => {
+        options.abortSignal?.removeEventListener("abort", onAbort);
+        tileWorker?.terminate();
+        paddedTile.close();
       };
+      const onAbort = () => {
+        cleanup();
+        reject(new DOMException("Aborted", "AbortError"));
+      };
+      if (options.abortSignal?.aborted) {
+        onAbort();
+        return;
+      }
+
+      try {
+        tileWorker = new TileWorker();
+        options.abortSignal?.addEventListener("abort", onAbort, { once: true });
+        tileWorker.onmessage = (e: MessageEvent<TileProcessingWorkerResult>) => {
+          cleanup();
+          if ("error" in e.data) {
+            reject(
+              new Error(`Shady Groove worker failed for ${tileIndex.z}/${tileIndex.x}/${tileIndex.y}: ${e.data.error}`),
+            );
+          } else {
+            resolve(e.data);
+          }
+        };
+        tileWorker.onerror = (event) => {
+          cleanup();
+          reject(
+            new Error(`Shady Groove worker failed for ${tileIndex.z}/${tileIndex.x}/${tileIndex.y}: ${event.message}`),
+          );
+        };
+        tileWorker.onmessageerror = () => {
+          cleanup();
+          reject(new Error("Could not decode Shady Groove worker output"));
+        };
+        tileWorker.postMessage(
+          {
+            tileIndex,
+            tileSize,
+            terrainEncoding: this.terrainEncoding,
+            paddedTile,
+            padding: this.padding,
+            gaussianScaleSpaceWeights: this.gaussianScaleSpaceWeights[tileIndex.z],
+            color: this.color,
+          },
+          [paddedTile],
+        );
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
     });
+  }
+
+  private async prepareTile(tileIndex: TileIndex, options: { abortSignal?: AbortSignal }) {
+    options.abortSignal?.throwIfAborted();
+    const results = await Promise.allSettled(this.makeTilePromises(tileIndex, options));
+    const imageBitmaps = results.map((res) => (res.status === "fulfilled" ? res.value : null));
+    try {
+      options.abortSignal?.throwIfAborted();
+      // Neighbor failures can use the existing padding fallback, but a failed
+      // center request must reach the caller instead of masquerading as no data.
+      const center = results[0];
+      if (center.status === "rejected") throw center.reason;
+      if (!center.value) return null;
+      const tileSize = center.value.width;
+      const paddedCanvas = createPaddedTileOffscreenCanvas(imageBitmaps, this.padding);
+      const paddedTile = await createImageBitmap(paddedCanvas);
+      if (options.abortSignal?.aborted) {
+        paddedTile.close();
+        options.abortSignal.throwIfAborted();
+      }
+      return { paddedTile, tileSize };
+    } finally {
+      // URL cache results are caller-owned copies. Custom providers retain
+      // their existing ownership contract and may share their own bitmaps.
+      if (this.urlPattern) {
+        for (const bitmap of imageBitmaps) bitmap?.close();
+      }
+    }
   }
 
   private makeTilePromises(
@@ -431,27 +512,17 @@ export class ShadyGroove {
       abortSignal?: AbortSignal;
     } = {},
   ): Promise<ImageBitmap | null> {
-    const tilePromises = await Promise.allSettled(this.makeTilePromises(tileIndex, options));
-
-    if (tilePromises[0].status !== "fulfilled" || !tilePromises[0].value) {
-      return null;
-    }
-
-    if (options.abortSignal?.aborted) {
-      return null;
-    }
-
-    const imageBitmaps = tilePromises.map((res) => (res.status === "fulfilled" ? res.value : null));
-    const paddedCanvas = createPaddedTileOffscreenCanvas(imageBitmaps, this.padding);
-    const paddedTile = await createImageBitmap(paddedCanvas);
-    const tileSize = imageBitmaps[0]?.width as number;
+    const prepared = await this.prepareTile(tileIndex, options);
+    if (!prepared) return null;
+    const { paddedTile, tileSize } = prepared;
     const gaussianScaleSpaceWeights = this.gaussianScaleSpaceWeights[tileIndex.z];
 
-    this.initGl(tileSize);
     // The pipeline is shared across tile requests. Only textures created by this
     // render are temporary; freeing the context also destroys the shared shaders.
     const tileTextures: Texture[] = [];
     try {
+      options.abortSignal?.throwIfAborted();
+      this.initGl(tileSize);
       const tex = Texture.fromImageSource(this.rctx, paddedTile);
       tileTextures.push(tex);
 
